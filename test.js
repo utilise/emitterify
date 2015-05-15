@@ -21,7 +21,7 @@ describe('emitterify', function() {
     expect(o.on.change).to.eql([{ fn: String, once: true }])
   })
 
-  it('should add emit an event', function() {
+  it('should emit an event', function() {
     var o = emitterify({})
       , called = 0
       , fn = function(){ called++ }
@@ -32,7 +32,7 @@ describe('emitterify', function() {
     expect(called).to.equal(2)
   })
 
-  it('should add emit an event', function() {
+  it('should emit an event once', function() {
     var o = emitterify({})
       , called = 0
       , fn = function(){ called++ }
