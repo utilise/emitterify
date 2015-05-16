@@ -10,20 +10,19 @@ module.exports = function emitterify(body) {
   function emit(type, param) {
     (body.on[type] || []).forEach(function (d,i,a) {
       try {
-        (d.once ? a.splice(i, 1).pop().fn : d.fn)(param || body)
+        (d.once ? a.splice(i, 1).pop() : d)(param || body)
       } catch(e) { err(e) }
     })
   }
 
-  function on(type, callback, opts) {
-    opts = opts || {}
-    opts.fn = callback
+  function on(type, callback) {
+    if (!callback) return body.on[type]
     body.on[type] = body.on[type] || []
-    body.on[type].push(opts)
+    body.on[type].push(callback)
     return body
   }
 
   function once(type, callback){
-    return body.on(type, callback, { once: true }), body
+    return callback.once = true, body.on(type, callback), body
   }
 }

@@ -12,13 +12,14 @@ describe('emitterify', function() {
   it('should add a listener', function() {
     var o = emitterify({})
     o.on('change', String)
-    expect(o.on.change).to.eql([{ fn: String }])
+    expect(o.on.change).to.eql([String])
   })
 
   it('should add a once listener', function() {
     var o = emitterify({})
     o.once('change', String)
-    expect(o.on.change).to.eql([{ fn: String, once: true }])
+    expect(o.on.change).to.eql([String])
+    expect(o.on.change[0].once).to.be.ok
   })
 
   it('should emit an event', function() {
@@ -54,5 +55,13 @@ describe('emitterify', function() {
 
     o.on('change', fn)
     o.emit('change')
+  })
+
+  it('should return listeners if used as getter', function() {
+    var o = emitterify({})
+
+    o.on('change', String)
+    o.on('change', Date)
+    expect(o.on('change')).to.eql([String, Date])
   })
 })
