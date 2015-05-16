@@ -10,7 +10,7 @@ module.exports = function emitterify(body) {
   function emit(type, param) {
     (body.on[type] || []).forEach(function (d,i,a) {
       try {
-        (d.once ? a.splice(i, 1).pop().fn : d.fn)(param || this)
+        (d.once ? a.splice(i, 1).pop().fn : d.fn)(param || body)
       } catch(e) { err(e) }
     })
   }
