@@ -64,4 +64,12 @@ describe('emitterify', function() {
     o.on('change', Date)
     expect(o.on('change')).to.eql([String, Date])
   })
+
+  it('should not register duplicate listeners', function() {
+    var o = emitterify({})
+
+    o.on('change', String)
+    o.on('change', String)
+    expect(o.on('change')).to.eql([String])
+  })
 })

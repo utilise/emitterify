@@ -16,10 +16,10 @@ module.exports = function emitterify(body) {
   }
 
   function on(type, callback) {
-    if (!callback) return body.on[type]
     body.on[type] = body.on[type] || []
-    body.on[type].push(callback)
-    return body
+    if (!callback) return body.on[type]
+    if (~body.on[type].indexOf(callback)) return body
+    return body.on[type].push(callback), body
   }
 
   function once(type, callback){
