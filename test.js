@@ -65,11 +65,30 @@ describe('emitterify', function() {
     expect(o.on('change')).to.eql([String, Date])
   })
 
-  it('should not register duplicate listeners', function() {
+  it('should register duplicate listeners', function() {
     var o = emitterify({})
 
     o.on('change', String)
     o.on('change', String)
-    expect(o.on('change')).to.eql([String])
+    expect(o.on('change')).to.eql([String, String])
+  })
+
+  it('should register only one listener for namespace', function() {
+    var o = emitterify({})
+
+    o.on('change.specific', String)
+    o.on('change.specific', Date)
+    expect(o.on('change.specific')).to.eql(Date)
+  })
+
+  it('should register only once listener for namespace', function() {
+    var o = emitterify({})
+      , called = 0
+      , fn = function(){ called++ }
+
+    o.once('change.specific', fn)
+    o.emit('change.specific')
+    o.emit('change.specific')
+    expect(called).to.equal(1)
   })
 })
