@@ -1,6 +1,8 @@
 var err  = require('err')('emitterify')
+  , keys = require('keys')
   , def  = require('def')
-
+  , not  = require('not')
+  
 module.exports = function emitterify(body) {
   return def(body, 'on', on)
        , def(body, 'once', once)
@@ -10,21 +12,24 @@ module.exports = function emitterify(body) {
   function emit(type, param) {
     var ns = type.split('.')[1]
       , id = type.split('.')[0]
+      , li = body.on[id] || []
 
-    if (ns) {
-      if (!body.on[id][ns]) return body
-      body.on[id][ns](param || body)
-      body.on[id][ns].once && delete body.on[id][ns]
-      return body
-    }
+    if (ns) return invoke(li, ns, param || body), body
 
-    (body.on[id] || []).forEach(function (d,i,a) {
-      try {
-        (d.once ? a.splice(i, 1).pop() : d)(param || body)
-      } catch(e) { err(e) }
-    })
+    li.forEach(function (fn, i, a) { invoke(a, i, param || body) })
+
+    keys(li)
+      .filter(not(isFinite))
+      .forEach(function(n){ invoke(li, n, param || body) })
 
     return body
+  }
+
+  function invoke(o, k, p){
+    // console.log('invoking', o, k)
+    if (!o[k]) return
+    try { o[k](p) } catch(e) { err(e) }
+    o[k].once && (isFinite(k) ? o.splice(k, 1) : delete o[k])
   }
 
   function on(type, callback) {

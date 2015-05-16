@@ -91,4 +91,14 @@ describe('emitterify', function() {
     o.emit('change.specific')
     expect(called).to.equal(1)
   })
+
+  it('should invoke namespaced listeners on generic call', function() {
+    var o = emitterify({})
+      , called = 0
+      , fn = function(){ called++ }
+
+    o.once('change.specific', fn)
+    o.emit('change')
+    expect(called).to.equal(1)
+  })
 })

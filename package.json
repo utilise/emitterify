@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "def": "git://github.com/utilise/def",
-    "err": "git://github.com/utilise/err"
+    "err": "git://github.com/utilise/err",
+    "keys": "git://github.com/utilise/keys",
+    "not": "git://github.com/utilise/not"
   }
 }
