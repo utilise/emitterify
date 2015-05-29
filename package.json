@@ -16,9 +16,9 @@
     "mocha-lcov-reporter": "0.0.2"
   },
   "dependencies": {
-    "def": "git://github.com/utilise/def",
-    "err": "git://github.com/utilise/err",
-    "keys": "git://github.com/utilise/keys",
-    "not": "git://github.com/utilise/not"
+    "def": "git+https://github.com/utilise/def.git",
+    "err": "git+https://github.com/utilise/err.git",
+    "keys": "git+https://github.com/utilise/keys.git",
+    "not": "git+https://github.com/utilise/not.git"
   }
 }
