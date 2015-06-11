@@ -18,6 +18,7 @@
   "dependencies": {
     "def": "git://github.com/utilise/def",
     "err": "git://github.com/utilise/err",
+    "is": "git://github.com/utilise/is",
     "keys": "git://github.com/utilise/keys",
     "not": "git://github.com/utilise/not"
   }

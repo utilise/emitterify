@@ -101,4 +101,18 @@ describe('emitterify', function() {
     o.emit('change')
     expect(called).to.equal(1)
   })
+
+  it('should invoke listeners with multiple args', function() {
+    var o = emitterify({})
+      , fn = function(){ args = arguments; ctx = this }
+      , args, ctx
+
+    o.once('change', fn)
+    o.emit('change', [1,2,3])
+    expect(args[0]).to.eql(1)
+    expect(args[1]).to.eql(2)
+    expect(args[2]).to.eql(3)
+    expect(ctx).to.eql(o)
+  })
+
 })
