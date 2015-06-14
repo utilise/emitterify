@@ -32,7 +32,7 @@ module.exports = function emitterify(body) {
 
   function invoke(o, k, p){
     if (!o[k]) return
-    try { o[k].apply(body, p) } catch(e) { err(e) }
+    try { o[k].apply(body, p) } catch(e) { err(e, e.stack)  }
     o[k].once && (isFinite(k) ? o.splice(k, 1) : delete o[k])
   }
 
