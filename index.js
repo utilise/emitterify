@@ -1,8 +1,8 @@
-var err  = require('err')('[emitterify]')
-  , keys = require('keys')
-  , def  = require('def')
-  , not  = require('not')
-  , is   = require('is')
+var err  = require('utilise.err')('[emitterify]')
+  , keys = require('utilise.keys')
+  , def  = require('utilise.def')
+  , not  = require('utilise.not')
+  , is   = require('utilise.is')
   
 module.exports = function emitterify(body) {
   return def(body, 'on', on)

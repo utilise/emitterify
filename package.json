@@ -1,5 +1,5 @@
 {
-  "name": "emitterify",
+  "name": "utilise.emitterify",
   "version": "0.0.0",
   "main": "index.js",
   "scripts": {
@@ -16,10 +16,10 @@
     "mocha-lcov-reporter": "0.0.2"
   },
   "dependencies": {
-    "def": "git+https://github.com/utilise/def.git",
-    "err": "git+https://github.com/utilise/err.git",
-    "is": "git+https://github.com/utilise/is.git",
-    "keys": "git+https://github.com/utilise/keys.git",
-    "not": "git+https://github.com/utilise/not.git"
+    "utilise.def": "*",
+    "utilise.err": "*",
+    "utilise.is": "*",
+    "utilise.keys": "*",
+    "utilise.not": "*"
   }
 }
