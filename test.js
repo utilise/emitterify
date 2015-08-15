@@ -115,4 +115,20 @@ describe('emitterify', function() {
     expect(ctx).to.eql(o)
   })
 
+  it('should remove once listener before invoking', function(done) {
+    var o = emitterify({})
+      , called = 0
+
+    o.once('change', function(){
+      called++
+      o.emit('change')  
+    })
+    o.emit('change')
+
+    setTimeout(function(){
+      expect(called).to.be.eql(1)
+      done()
+    }, 10)
+  })
+
 })
