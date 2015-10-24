@@ -131,4 +131,9 @@ describe('emitterify', function() {
     }, 10)
   })
 
+  it('should emitterify function', function() {
+    var fn = emitterify(function(){})
+    expect(fn.on).to.be.a('function')
+  })
+
 })
