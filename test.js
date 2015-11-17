@@ -9,6 +9,15 @@ describe('emitterify', function() {
     expect(typeof o.emit).to.eql('function')
   })
 
+  it('should be idempotent', function() {
+    var o = emitterify({})
+    o.on('event', String)
+    expect(o.on.event.length).to.eql(1)
+
+    o = emitterify(o)
+    expect(o.on.event.length).to.eql(1)
+  })
+
   it('should add a listener', function() {
     var o = emitterify({})
     o.on('change', String)
