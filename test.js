@@ -141,8 +141,18 @@ describe('emitterify', function() {
   })
 
   it('should emitterify function', function() {
-    var fn = emitterify(function(){})
+    var fn = emitterify(String)
     expect(fn.on).to.be.a('function')
   })
 
+  it('should allow proxying', function() {
+    var o = emitterify({})
+      , emit = o.emit
+      , result
+
+    o.on('change', function(d){ result = d})
+    o.emit = function(type, d){ emit(type, d + ' bar') }
+    o.emit('change', 'foo')
+    expect(result).to.be.eql('foo bar')
+  })
 })

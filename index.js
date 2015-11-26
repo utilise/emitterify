@@ -5,9 +5,9 @@ var err  = require('utilise.err')('[emitterify]')
   , is   = require('utilise.is')
   
 module.exports = function emitterify(body) {
-  return def(body, 'on', on)
-       , def(body, 'once', once)
-       , def(body, 'emit', emit)
+  return def(body, 'on', on, 1)
+       , def(body, 'once', once, 1)
+       , def(body, 'emit', emit, 1)
        , body
 
   function emit(type, param, filter) {
