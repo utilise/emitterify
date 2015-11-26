@@ -1,6 +1,6 @@
 {
   "name": "utilise.emitterify",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "main": "index.js",
   "scripts": {
     "test": "istanbul test ./node_modules/mocha/bin/_mocha --report html -- -R spec",
