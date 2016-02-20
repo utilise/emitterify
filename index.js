@@ -5,17 +5,19 @@ var err  = require('utilise.err')('[emitterify]')
   , is   = require('utilise.is')
   
 module.exports = function emitterify(body) {
-  return def(body, 'on', on, 1)
+  return def(body, 'emit', emit, 1)
        , def(body, 'once', once, 1)
-       , def(body, 'emit', emit, 1)
+       , def(body, 'on', on, 1)
        , body
 
   function emit(type, param, filter) {
     var ns = type.split('.')[1]
       , id = type.split('.')[0]
       , li = body.on[id] || []
-      , tt = li.length-1
-      , pm = is.arr(param) ? param : [param || body]
+      , tt = li.length - 1
+      , pm = is.arr(param) ? param 
+           : is.def(param) ? [param]
+           : [body]
 
     if (ns) return invoke(li, ns, pm), body
 

@@ -155,4 +155,26 @@ describe('emitterify', function() {
     o.emit('change', 'foo')
     expect(result).to.be.eql('foo bar')
   })
+
+  it('should emit any defined falsy params', function() {
+    var body = {}
+      , o = emitterify(body)
+      , result
+
+    o.on('change', function(d){ result = d })
+
+    o.emit('change', 0)
+    expect(result).to.be.eql(0)
+
+    o.emit('change', false)
+    expect(result).to.be.eql(false)
+
+    o.emit('change', 0)
+    expect(result).to.be.eql(0)
+
+    o.emit('change', undefined)
+    expect(result).to.be.eql(body)
+  })
+
+
 })
