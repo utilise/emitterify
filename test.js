@@ -176,5 +176,21 @@ describe('emitterify', function() {
     expect(result).to.be.eql(body)
   })
 
+  it('should allow changing default param', function() {
+    var o = emitterify({}, -1)
+      , result
+
+    o.on('change', function(d){ result = d })
+
+    o.emit('change')
+    expect(result).to.be.eql(-1)
+
+    o.emit('change', 1)
+    expect(result).to.be.eql(1)
+
+    o.emit('change', ['a'])
+    expect(result).to.be.eql('a')
+  })
+
 
 })

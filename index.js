@@ -4,7 +4,7 @@ var err  = require('utilise.err')('[emitterify]')
   , not  = require('utilise.not')
   , is   = require('utilise.is')
   
-module.exports = function emitterify(body) {
+module.exports = function emitterify(body, dparam) {
   return def(body, 'emit', emit, 1)
        , def(body, 'once', once, 1)
        , def(body, 'on', on, 1)
@@ -15,9 +15,10 @@ module.exports = function emitterify(body) {
       , id = type.split('.')[0]
       , li = body.on[id] || []
       , tt = li.length - 1
-      , pm = is.arr(param) ? param 
-           : is.def(param) ? [param]
+      , tp = is.def(param)  ? param 
+           : is.def(dparam) ? dparam
            : [body]
+      , pm = is.arr(tp) ? tp : [tp]
 
     if (ns) return invoke(li, ns, pm), body
 
