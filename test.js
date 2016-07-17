@@ -192,5 +192,20 @@ describe('emitterify', function() {
     expect(result).to.be.eql('a')
   })
 
+  it('should proxy arguments object', function() {
+    var o = emitterify({})
+      , fn = function(){ args = arguments }
+      , args, ctx
+
+    o.on('change', fn)
+
+    !function proxy(){
+      o.emit('change', arguments)
+    }('a', 'b', 'c')
+
+    expect(args[0]).to.eql('a')
+    expect(args[1]).to.eql('b')
+    expect(args[2]).to.eql('c')
+  })
 
 })
