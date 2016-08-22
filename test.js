@@ -192,6 +192,22 @@ describe('emitterify', function() {
     expect(result).to.be.eql('a')
   })
 
+  it('should work with null param', function() {
+    var o = emitterify({}, null)
+      , result
+
+    o.on('change', function(d){ result = d })
+
+    o.emit('change')
+    expect(result).to.be.eql(null)
+
+    o.emit('change', 1)
+    expect(result).to.be.eql(1)
+
+    o.emit('change', ['a'])
+    expect(result).to.be.eql('a')
+  })
+
   it('should proxy arguments object', function() {
     var o = emitterify({})
       , fn = function(){ args = arguments }

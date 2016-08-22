@@ -18,7 +18,7 @@ module.exports = function emitterify(body, dparam) {
       , tp = is.def(param)  ? param 
            : is.def(dparam) ? dparam
            : [body]
-      , pm = tp.length && !is.str(tp) ? tp : [tp]
+      , pm = tp && tp.length && !is.str(tp) ? tp : [tp]
 
     if (ns) return invoke(li, ns, pm), body
 
