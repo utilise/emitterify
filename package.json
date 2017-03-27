@@ -4,7 +4,11 @@
   "main": "index.js",
   "scripts": {
     "test": "istanbul test ./node_modules/mocha/bin/_mocha --report html -- -R spec",
-    "coverage": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && rm -rf ./coverage"
+    "coverage": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && rm -rf ./coverage",
+    "cov": "istanbul cover ./node_modules/mocha/bin/_mocha -- -R spec",
+    "minify": "uglifyjs client.js -m -c drop_console,dead_code -d client=true -o client.min.js",
+    "gzip": "gzip -c client.min.js > client.min.js.gz",
+    "build": "npm run minify && npm run gzip"
   },
   "author": "Pedram Emrouznejad (https://github.com/pemrouz)",
   "license": "pemrouz.mit-license.org",
@@ -13,13 +17,17 @@
     "coveralls": "^2.11.2",
     "istanbul": "^0.3.13",
     "mocha": "^2.2.4",
-    "mocha-lcov-reporter": "0.0.2"
+    "mocha-lcov-reporter": "0.0.2",
+    "utilise.clone": "0.0.2",
+    "utilise.delay": "0.0.1",
+    "utilise.time": "0.0.4"
   },
   "dependencies": {
     "utilise.def": "*",
     "utilise.err": "*",
     "utilise.is": "*",
     "utilise.keys": "*",
-    "utilise.not": "*"
+    "utilise.not": "*",
+    "utilise.promise": "0.0.1"
   }
 }
