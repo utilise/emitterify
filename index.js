@@ -75,7 +75,7 @@ module.exports = function emitterify(body) {
 
     o.reduce = function(fn, seed) {
       var n = observable()
-      o.listeners.push(function(d, i){ (res = fn(seed, d, i)) && n.next(seed = res) })
+      o.listeners.push(function(d, i){ n.next(seed = fn(seed, d, i)) })
       return n
     }
 

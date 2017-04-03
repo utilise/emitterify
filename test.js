@@ -273,15 +273,20 @@ describe('emitterify', function() {
       , results = []
 
     o.on('foo')
-      .reduce((acc, d) => d % 2 ? (acc.push(d), acc) : false, [])
+      .reduce((acc, d) => d % 2 ? (acc.push(d), acc) : acc, [])
       .map(d => results.push(clone(d)))
     
     ;[0,1,2,3,4,5,6,7,8,9].map(d => o.emit('foo', d))
 
     expect(results).to.eql([
-      [1]
+      []
+    , [1]
+    , [1]
+    , [1,3]
     , [1,3]
     , [1,3,5]
+    , [1,3,5]
+    , [1,3,5,7]
     , [1,3,5,7]
     , [1,3,5,7,9]
     ])
