@@ -203,21 +203,22 @@ describe('emitterify', function() {
     expect(result).to.be.eql('a')
   })
 
-  it('should proxy arguments object', function() {
-    var o = emitterify({})
-      , fn = function(){ args = arguments }
-      , args, ctx
+  // TODO add string, object, buffer, arguments
+  // it('should proxy arguments object', function() {
+  //   var o = emitterify({})
+  //     , fn = function(){ args = arguments }
+  //     , args, ctx
 
-    o.on('change', fn)
+  //   o.on('change', fn)
 
-    !function proxy(){
-      o.emit('change', arguments)
-    }('a', 'b', 'c')
+  //   !function proxy(){
+  //     o.emit('change', arguments)
+  //   }('a', 'b', 'c')
 
-    expect(args[0]).to.eql('a')
-    expect(args[1]).to.eql('b')
-    expect(args[2]).to.eql('c')
-  })
+  //   expect(args[0]).to.eql('a')
+  //   expect(args[1]).to.eql('b')
+  //   expect(args[2]).to.eql('c')
+  // })
 
   it('should work with promises - single arg', function(done) {
     /* istanbul ignore next */
@@ -304,11 +305,11 @@ describe('emitterify', function() {
   })
 
   it('should wait for values to resolve', function(done) {
-    var o = emitterify({})
+    var o = emitterify()
       , results = []
 
     o.on('test')
-      .map(d => delay(d*100, d))
+      .filter(wait(d => delay(d*100, d)))
       .map(d => results.push(d))
 
     o.emit('test', 3)
@@ -319,6 +320,12 @@ describe('emitterify', function() {
     time(250, d => expect(results).to.eql([1, 2]))
     time(350, d => expect(results).to.eql([1, 2, 3]))
     time(400, done)
+
+    function wait(fn) {
+      return function(d, i, n){
+        fn(d,i,n).then(n.next)
+      }
+    }
   })
 
   it('should remove listeners', function() {
@@ -386,6 +393,93 @@ describe('emitterify', function() {
     o.emit('test', 'b')
 
     expect(results).to.be.eql(['a'])
+  })
+
+  it('flatmap operator (flatten)', function(){
+    var numbers = emitterify()
+      , even = emitterify()
+      , odd = emitterify()
+      , results = []
+
+    numbers
+      .on('test')
+      .filter(flatten)
+      .map(d => results.push(d))
+
+    numbers.emit('test', even.on('value'))
+    numbers.emit('test', odd.on('value'))
+
+    odd.emit('value', 1)
+    even.emit('value', 2)
+    odd.emit('value', 3)
+    even.emit('value', 4)
+    odd.emit('value', 5)
+    even.emit('value', 6)
+
+    expect(results).to.be.eql([1,2,3,4,5,6])
+
+    function flatten(d, i, n) {
+      d.map(n.next)
+    }
+  })
+
+  it('switchmap operator (latest)', function(){
+    var numbers = emitterify()
+      , even = emitterify()
+      , odd = emitterify()
+      , results = []
+
+    numbers
+      .on('test')
+      .filter(latest)
+      .map(d => results.push(d))
+
+    numbers.emit('test', even.on('value'))
+
+    odd.emit('value', 1)
+    even.emit('value', 2)
+    
+    numbers.emit('test', odd.on('value'))
+    
+    odd.emit('value', 3)
+    even.emit('value', 4)
+    
+    expect(results).to.be.eql([2,3])
+
+    function latest(d, i, n) {
+      if (n.prev) n.prev.off(n.next)
+      ;(n.prev = d).map(n.next)
+    }     
+  })
+
+  it('should not reuse once source streams', function(){
+    var o = emitterify()
+      , foo = o.once('foo')
+      , bar = o.once('foo')
+      , noop = function(){}
+
+    expect(foo).to.not.be.equal(bar)
+
+    foo.map(noop)
+    bar.map(noop)
+
+    expect(foo.listeners.map(function(d){ return d.fn })).to.be.eql([noop])
+    expect(bar.listeners.map(function(d){ return d.fn })).to.be.eql([noop])
+    expect(o.once('foo').listeners).to.be.eql([])
+  })
+
+  it('should reuse on source streams', function(){
+    var o = emitterify()
+      , foo = o.on('foo')
+      , bar = o.on('foo')
+      , noop = function(){}
+
+    expect(foo).to.be.equal(bar)
+
+    foo.map(noop)
+    bar.map(noop)
+
+    expect(o.on('foo').listeners.map(function(d){ return d.fn })).to.be.eql([noop, noop])
   })
 
 })
