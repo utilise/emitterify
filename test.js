@@ -96,10 +96,12 @@ describe('emitterify', function() {
 
   it('should register only one listener for namespace', function() {
     var o = emitterify({})
-
     o.on('change.specific', String)
     o.on('change.specific', Date)
-    expect(o.on.change).to.eql([Date])
+
+    expect(o.on.change.length).to.eql(1)
+    expect(o.on.change[0]).to.eql(Date)
+    expect(o.on.change.specific).to.eql(Date)
   })
 
   it('should register only once listener for namespace', function() {
@@ -107,6 +109,7 @@ describe('emitterify', function() {
       , called = 0
       , fn = function(){ called++ }
 
+    o.once('change.specific', fn)
     o.once('change.specific', fn)
     o.emit('change.specific')
     o.emit('change.specific')
@@ -464,7 +467,7 @@ describe('emitterify', function() {
     }     
   })
 
-  it('should not reuse once source streams', function(){
+  it('should not reuse observables by default (once)', function(){
     var o = emitterify()
       , foo = o.once('foo')
       , bar = o.once('foo')
@@ -480,10 +483,26 @@ describe('emitterify', function() {
     expect(o.once('foo').listeners).to.be.eql([])
   })
 
-  it('should reuse on source streams', function(){
+  it('should not reuse observables by default (on)', function(){
     var o = emitterify()
       , foo = o.on('foo')
       , bar = o.on('foo')
+      , noop = function(){}
+
+    expect(foo).to.not.be.equal(bar)
+
+    foo.map(noop)
+    bar.map(noop)
+
+    expect(foo.listeners.map(function(d){ return d.fn })).to.be.eql([noop])
+    expect(bar.listeners.map(function(d){ return d.fn })).to.be.eql([noop])
+    expect(o.on('foo').listeners).to.be.eql([])
+  })
+
+  it('should reuse observables by namespace (once)', function(){
+    var o = emitterify()
+      , foo = o.once('foo.specific')
+      , bar = o.once('foo.specific')
       , noop = function(){}
 
     expect(foo).to.be.equal(bar)
@@ -491,7 +510,21 @@ describe('emitterify', function() {
     foo.map(noop)
     bar.map(noop)
 
-    expect(o.on('foo').listeners.map(function(d){ return d.fn })).to.be.eql([noop, noop])
+    expect(o.once('foo.specific').listeners.map(function(d){ return d.fn })).to.be.eql([noop, noop])
+  })
+
+  it('should reuse observables by namespace (on)', function(){
+    var o = emitterify()
+      , foo = o.on('foo.specific')
+      , bar = o.on('foo.specific')
+      , noop = function(){}
+
+    expect(foo).to.be.equal(bar)
+
+    foo.map(noop)
+    bar.map(noop)
+
+    expect(o.on('foo.specific').listeners.map(function(d){ return d.fn })).to.be.eql([noop, noop])
   })
 
 })
