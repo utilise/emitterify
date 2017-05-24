@@ -69,23 +69,20 @@ module.exports = function emitterify(body) {
     o.i = 0
 
     o.map = function(fn) {
-      var n = observable()
-      o.listeners.push(function(d, i){ n.next(fn(d, i, n)) })
-      o.listeners[o.listeners.length - 1].fn = fn
+      var n = observable(o)
+      o.listeners[o.listeners.push(function(d, i){ n.next(fn(d, i, n)) }) - 1].fn = fn
       return n
     }
 
     o.filter = function(fn) {
-      var n = observable()
-      o.listeners.push(function(d, i){ fn(d, i, n) && n.next(d) })
-      o.listeners[o.listeners.length - 1].fn = fn
+      var n = observable(o)
+      o.listeners[o.listeners.push(function(d, i){ fn(d, i, n) && n.next(d) }) - 1].fn = fn
       return n
     }
 
     o.reduce = function(fn, seed) {
-      var n = observable()
-      o.listeners.push(function(d, i){ n.next(seed = fn(seed, d, i, n)) })
-      o.listeners[o.listeners.length - 1].fn = fn
+      var n = observable(o)
+      o.listeners[o.listeners.push(function(d, i){ n.next(seed = fn(seed, d, i, n)) }) - 1].fn = fn
       return n
     }
 
