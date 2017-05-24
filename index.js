@@ -15,7 +15,7 @@ module.exports = function emitterify(body) {
     
     for (var i = 0; i < li.length; i++)
       if (!li[i].ns || !filter || filter(li[i].ns))
-        call(li[i].once ? li.splice(i, 1)[0] : li[i], pm)
+        call(li[i].once ? li.splice(i--, 1)[0] : li[i], pm)
 
     for (var i = 0; i < body.on['*'].length; i++)
       call(body.on['*'][i], [type, pm])

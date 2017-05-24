@@ -61,6 +61,18 @@ describe('emitterify', function() {
     expect(called).to.equal(1)
   })
 
+  it('should not skip handlers with once', function() {
+    var o = emitterify({})
+      , called = 0
+      , fn = function(){ called++ }
+
+    o.once('change', fn)
+    o.once('change', fn)
+    o.once('change', fn)
+    o.emit('change')
+    expect(called).to.equal(3)
+  })
+
   it('should not fail with no listeners', function() {
     var o = emitterify({})
     o.emit('change')
