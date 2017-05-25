@@ -170,3 +170,7 @@ This events in the following libraries all use this interface:
 * `stream`**`.off`**`([`_`stream`_`])`
 
   Unsubscribe the specified stream object. If no stream is specified, unsubscribe all listeners. Returns the same `stream`.
+
+* `stream`**`.unsubscribe`**`()`
+
+  Unsubscribes the stream from the parent stream.
