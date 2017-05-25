@@ -59,30 +59,32 @@ module.exports = function emitterify(body) {
       li.splice(i, 1)
   }
 
-  function observable() {
   function off(type, cb) {
     remove((body.on[type] || []), cb)
     if (cb && cb.ns) delete li[cb.ns]
   }
 
+  function observable(parent, fn) {
     var o = promise()
     o.listeners = []
+    o.parent = parent
+    o.fn = fn
     o.i = 0
 
     o.map = function(fn) {
-      var n = observable(o)
+      var n = observable(o, fn)
       o.listeners[o.listeners.push(function(d, i){ n.next(fn(d, i, n)) }) - 1].fn = fn
       return n
     }
 
     o.filter = function(fn) {
-      var n = observable(o)
+      var n = observable(o, fn)
       o.listeners[o.listeners.push(function(d, i){ fn(d, i, n) && n.next(d) }) - 1].fn = fn
       return n
     }
 
     o.reduce = function(fn, seed) {
-      var n = observable(o)
+      var n = observable(o, fn)
       o.listeners[o.listeners.push(function(d, i){ n.next(seed = fn(seed, d, i, n)) }) - 1].fn = fn
       return n
     }
@@ -98,6 +100,8 @@ module.exports = function emitterify(body) {
       return remove(o.listeners, fn), o
     }
 
+    o.unsubscribe = function(){
+      return o.parent.off(o.fn), o.parent = null, o
     }
 
     return o

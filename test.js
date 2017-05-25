@@ -527,4 +527,20 @@ describe('emitterify', function() {
     expect(o.on('foo.specific').listeners.map(function(d){ return d.fn })).to.be.eql([noop, noop])
   })
 
+  it('should allow unsubscribing observable', function(){
+    var o = emitterify()
+      , foo = o.on('foo')
+      , bar = foo.map(function(){ result++ })
+      , result = 0
+
+    expect(bar.parent).to.be.eql(foo)
+
+    o.emit('foo')
+    bar.unsubscribe()
+    o.emit('foo')
+
+    expect(result).to.be.eql(1)
+    expect(bar.parent).to.be.not.ok
+  })
+
 })
