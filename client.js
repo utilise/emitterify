@@ -32,12 +32,10 @@ module.exports = function emitterify(body) {
     
     for (var i = 0; i < li.length; i++)
       if (!li[i].ns || !filter || filter(li[i].ns))
-        call(li[i].once ? li.splice(i, 1)[0] : li[i], pm)
+        call(li[i].once ? li.splice(i--, 1)[0] : li[i], pm)
 
     for (var i = 0; i < body.on['*'].length; i++)
       call(body.on['*'][i], [type, pm])
-
-    if (li.source) call(li.source, pm)
 
     return body
   }
@@ -49,60 +47,62 @@ module.exports = function emitterify(body) {
                           : cb.call(body, pm) 
   }
 
-  function on(type, cb) {
+  function on(type, cb, once) {
     var id = type.split('.')[0]
+      , ns = type.split('.')[1]
       , li = body.on[id] = body.on[id] || []
-      , i = li.length
+      
+    return !cb &&  ns ? (cb = body.on[id][ns]) ? cb : push(observable())
+         : !cb && !ns ? push(observable())
+         :  cb &&  ns ? push((remove(li, body.on[id][ns]), cb))
+         :  cb && !ns ? push(cb)
+                      : false
 
-    if (!cb) return body.on[type].source || (body.on[type].source = observable())
-
-    if ((cb.ns = type.split('.')[1]))
-      while (~--i && li[i].ns === cb.ns)
-        li.splice(i, 1)
-
-    li.push(cb)
-    return cb.next ? cb : body
+    function push(cb){
+      cb.once = once
+      if (ns) body.on[id][cb.ns = ns] = cb
+      li.push(cb)
+      return cb.next ? cb : body
+    }
   }
 
   function once(type, callback){
-    (callback = callback || observable()).once = true
-    return body.on(type, callback)
+    return body.on(type, callback, true)
   }
 
-  function off(type, cb) {
-    var li = (body.on[type] || [])
-      , i  = li.length
-
-    if (cb && cb == li.source) 
-      return delete li.source
-
-    while (~--i && (cb == li[i] || !cb))
+  function remove(li, cb) {
+    var i = li.length
+    while (~--i && (cb == li[i] || cb == li[i].fn || !cb))
       li.splice(i, 1)
   }
 
-  function observable() {
+  function off(type, cb) {
+    remove((body.on[type] || []), cb)
+    if (cb && cb.ns) delete li[cb.ns]
+  }
+
+  function observable(parent, fn) {
     var o = promise()
     o.listeners = []
+    o.parent = parent
+    o.fn = fn
     o.i = 0
 
     o.map = function(fn) {
-      var n = observable()
-      o.listeners.push(function(d, i){ n.next(fn(d, i, n)) })
-      o.listeners[o.listeners.length - 1].fn = fn
+      var n = observable(o, fn)
+      o.listeners[o.listeners.push(function(d, i){ n.next(fn(d, i, n)) }) - 1].fn = fn
       return n
     }
 
     o.filter = function(fn) {
-      var n = observable()
-      o.listeners.push(function(d, i){ fn(d, i, n) && n.next(d) })
-      o.listeners[o.listeners.length - 1].fn = fn
+      var n = observable(o, fn)
+      o.listeners[o.listeners.push(function(d, i){ fn(d, i, n) && n.next(d) }) - 1].fn = fn
       return n
     }
 
     o.reduce = function(fn, seed) {
-      var n = observable()
-      o.listeners.push(function(d, i){ n.next(seed = fn(seed, d, i, n)) })
-      o.listeners[o.listeners.length - 1].fn = fn
+      var n = observable(o, fn)
+      o.listeners[o.listeners.push(function(d, i){ n.next(seed = fn(seed, d, i, n)) }) - 1].fn = fn
       return n
     }
 
@@ -114,11 +114,11 @@ module.exports = function emitterify(body) {
     }
 
     o.off = function(fn){
-      var i = o.listeners.length
+      return remove(o.listeners, fn), o
+    }
 
-      while (~--i && (fn == o.listeners[i].fn || !fn))
-        o.listeners.splice(i, 1)
-      return o
+    o.unsubscribe = function(){
+      return o.parent.off(o.fn), o.parent = null, o
     }
 
     return o
