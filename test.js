@@ -543,4 +543,17 @@ describe('emitterify', function() {
     expect(bar.parent).to.be.not.ok
   })
 
+  it('should allow observable unsubscribing itself', function(){
+    var o = emitterify()
+      , result = 0
+
+    o.on('foo').filter((m, i, n) => n.unsubscribe()).map(d => result++)
+
+    o.emit('foo')
+    o.emit('foo')
+    o.emit('foo')
+
+    expect(result).to.be.eql(1)
+  })
+
 })
