@@ -55,8 +55,9 @@ module.exports = function emitterify(body) {
 
   function remove(li, cb) {
     var i = li.length
-    while (~--i && (cb == li[i] || cb == li[i].fn || !cb))
-      li.splice(i, 1)
+    while (~--i) 
+      if (cb == li[i] || cb == li[i].fn || !cb)
+        li.splice(i, 1)
   }
 
   function off(type, cb) {

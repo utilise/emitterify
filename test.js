@@ -357,18 +357,18 @@ describe('emitterify', function() {
     o.on('test', fn2)
     expect(o.on.test.length).to.be.eql(2)
 
-    o.off('test', fn2)
+    o.off('test', fn1)
 
     o.emit('test', 1)
-    expect(result1).to.be.eql(1)
-    expect(result2).to.be.not.ok
+    expect(result1).to.be.not.ok
+    expect(result2).to.be.eql(1)
     expect(o.on.test.length).to.be.eql(1)
 
     o.off('test')
 
     o.emit('test', 2)
-    expect(result1).to.be.eql(1)
-    expect(result2).to.be.not.ok
+    expect(result1).to.be.not.ok
+    expect(result2).to.be.eql(1)
     expect(o.on.test.length).to.be.eql(0)
   })
 
