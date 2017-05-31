@@ -94,6 +94,17 @@ describe('emitterify', function() {
     expect(o.on.change).to.eql([String, String])
   })
 
+  it('should separate namespaced and non-namespaced listeners', function() {
+    var o = emitterify({})
+
+    o.on('change', String)
+    o.on('change.foo', Date)
+    expect(o.on.change.length).to.eql(2)
+    expect(o.on.change[0]).to.eql(String)
+    expect(o.on.change[1]).to.eql(Date)
+    expect(o.on.change.foo).to.eql(Date)
+  })
+
   it('should register only one listener for namespace', function() {
     var o = emitterify({})
     o.on('change.specific', String)
@@ -351,18 +362,16 @@ describe('emitterify', function() {
       , fn1 = d => { result1 = d }
       , fn2 = d => { result2 = d }
 
-    o.off('test')
-
     o.on('test', fn1)
     o.on('test', fn2)
     expect(o.on.test.length).to.be.eql(2)
 
     o.off('test', fn1)
-
+    expect(o.on.test.length).to.be.eql(1)
+    
     o.emit('test', 1)
     expect(result1).to.be.not.ok
     expect(result2).to.be.eql(1)
-    expect(o.on.test.length).to.be.eql(1)
 
     o.off('test')
 

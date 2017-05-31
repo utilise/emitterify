@@ -37,7 +37,7 @@ module.exports = function emitterify(body) {
       
     return !cb &&  ns ? (cb = body.on[id][ns]) ? cb : push(observable())
          : !cb && !ns ? push(observable())
-         :  cb &&  ns ? push((remove(li, body.on[id][ns]), cb))
+         :  cb &&  ns ? push((remove(li, body.on[id][ns] || -1), cb))
          :  cb && !ns ? push(cb)
                       : false
 
