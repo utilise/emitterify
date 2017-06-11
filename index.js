@@ -35,15 +35,15 @@ module.exports = function emitterify(body) {
       , ns = type.split('.')[1]
       , li = body.on[id] = body.on[id] || []
       
-    return !cb &&  ns ? (cb = body.on[id][ns]) ? cb : push(observable())
+    return !cb &&  ns ? (cb = body.on[id]['$'+ns]) ? cb : push(observable())
          : !cb && !ns ? push(observable())
-         :  cb &&  ns ? push((remove(li, body.on[id][ns] || -1), cb))
+         :  cb &&  ns ? push((remove(li, body.on[id]['$'+ns] || -1), cb))
          :  cb && !ns ? push(cb)
                       : false
 
     function push(cb){
       cb.once = once
-      if (ns) body.on[id][cb.ns = ns] = cb
+      if (ns) body.on[id]['$'+(cb.ns = ns)] = cb
       li.push(cb)
       return cb.next ? cb : body
     }
@@ -62,7 +62,7 @@ module.exports = function emitterify(body) {
 
   function off(type, cb) {
     remove((body.on[type] || []), cb)
-    if (cb && cb.ns) delete li[cb.ns]
+    if (cb && cb.ns) delete li['$'+cb.ns]
   }
 
   function observable(parent, fn) {

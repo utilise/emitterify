@@ -102,7 +102,7 @@ describe('emitterify', function() {
     expect(o.on.change.length).to.eql(2)
     expect(o.on.change[0]).to.eql(String)
     expect(o.on.change[1]).to.eql(Date)
-    expect(o.on.change.foo).to.eql(Date)
+    expect(o.on.change.$foo).to.eql(Date)
   })
 
   it('should register only one listener for namespace', function() {
@@ -112,7 +112,7 @@ describe('emitterify', function() {
 
     expect(o.on.change.length).to.eql(1)
     expect(o.on.change[0]).to.eql(Date)
-    expect(o.on.change.specific).to.eql(Date)
+    expect(o.on.change.$specific).to.eql(Date)
   })
 
   it('should register only once listener for namespace', function() {
@@ -144,6 +144,18 @@ describe('emitterify', function() {
       , fn = function(){ called++ }
 
     o.once('change.specific', fn)
+    expect(called).to.equal(0)
+    o.emit('change')
+    expect(called).to.equal(1)
+  })
+
+  it('should not conflate namespaces with native', function() {
+    var o = emitterify({})
+      , called = 0
+      , fn = function(){ called++ }
+
+    o.once('change.push', fn)
+    expect(called).to.equal(0)
     o.emit('change')
     expect(called).to.equal(1)
   })
