@@ -174,3 +174,7 @@ This events in the following libraries all use this interface:
 * `stream`**`.unsubscribe`**`()`
 
   Unsubscribes the stream from the parent stream.
+
+* `stream`**`.source`**
+
+  This refers to the root source, so if you for example build a pipeline like `pipeline = foo.on('event').map(d => d).map(d => d).map(d => d)`, then `pipeline.source` is equal to that initial `foo.on('event')`. This is convenient for tearing down an entire pipeline by doing `pipeline.source.unsubscribe()` .

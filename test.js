@@ -548,7 +548,7 @@ describe('emitterify', function() {
     expect(o.on('foo.specific').listeners.map(function(d){ return d.fn })).to.be.eql([noop, noop])
   })
 
-  it('should allow unsubscribing observable', function(){
+  it('should allow observable unsubscribing from another observable', function(){
     var o = emitterify()
       , foo = o.on('foo')
       , bar = foo.map(function(){ result++ })
@@ -564,7 +564,7 @@ describe('emitterify', function() {
     expect(bar.parent).to.be.not.ok
   })
 
-  it('should allow observable unsubscribing itself', function(){
+  it('should allow observable unsubscribing from another observable internally', function(){
     var o = emitterify()
       , result = 0
 
@@ -575,6 +575,38 @@ describe('emitterify', function() {
     o.emit('foo')
 
     expect(result).to.be.eql(1)
+  })
+
+  it('should allow observable unsubscribing from source', function(){
+    var o = emitterify()
+      , foo = o.on('foo')
+      , result = 0
+
+    foo.map(function(){ result++ })
+    expect(foo.parent).to.be.eql(o)
+
+    o.emit('foo')
+    foo.unsubscribe()
+    o.emit('foo')
+
+    expect(result).to.be.eql(1)
+    expect(foo.parent).to.be.not.ok
+  })
+
+  it('should allow observable unsubscribing from source from grandchildren', function(){
+    var o = emitterify()
+      , source = o.on('foo')
+      , foo = source.map(d => d).map(d => d).map(d => result++)
+      , result = 0
+
+    expect(foo.source).to.be.eql(source)
+
+    o.emit('foo')
+    foo.source.unsubscribe()
+    o.emit('foo')
+
+    expect(result).to.be.eql(1)
+    expect(foo.source).to.be.not.ok
   })
 
 })
