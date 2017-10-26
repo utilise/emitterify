@@ -1,7 +1,7 @@
 var emitterify = (function () {
 'use strict';
 
-var index$2 = promise;
+var utilise_promise = promise;
 
 function promise() {
   var resolve
@@ -16,28 +16,28 @@ function promise() {
   return p
 }
 
-var index$4 = function flatten(p,v){ 
+var utilise_flatten = function flatten(p,v){ 
   if (v instanceof Array) v = v.reduce(flatten, []);
   return (p = p || []), p.concat(v) 
 };
 
-var index$8 = function has(o, k) {
+var utilise_has = function has(o, k) {
   return k in o
 };
 
-var index$6 = function def(o, p, v, w){
+var utilise_def = function def(o, p, v, w){
   if (o.host && o.host.nodeName) o = o.host;
   if (p.name) v = p, p = p.name;
-  !index$8(o, p) && Object.defineProperty(o, p, { value: v, writable: w });
+  !utilise_has(o, p) && Object.defineProperty(o, p, { value: v, writable: w });
   return o[p]
 };
 
-var index = function emitterify(body) {
+var emitterify = function emitterify(body) {
   body = body || {};
-  index$6(body, 'emit', emit, 1);
-  index$6(body, 'once', once, 1);
-  index$6(body, 'off', off, 1);
-  index$6(body, 'on', on, 1);
+  utilise_def(body, 'emit', emit, 1);
+  utilise_def(body, 'once', once, 1);
+  utilise_def(body, 'off', off, 1);
+  utilise_def(body, 'on', on, 1);
   body.on['*'] = body.on['*'] || [];
   return body
 
@@ -52,7 +52,7 @@ var index = function emitterify(body) {
     for (var i = 0; i < body.on['*'].length; i++)
       results.push(call(body.on['*'][i], [type, pm]));
 
-    return results.reduce(index$4, [])
+    return results.reduce(utilise_flatten, [])
   }
 
   function call(cb, pm){
@@ -101,34 +101,43 @@ var index = function emitterify(body) {
 
   function observable(parent, opts) {
     opts = opts || {};
-    var o = emitterify(opts.base || index$2());
+    var o = emitterify(opts.base || utilise_promise());
     o.i = 0;
     o.li = [];
     o.fn = opts.fn;
-    o.recv = opts.recv;
     o.parent = parent;
-    o.source = opts.recv ? o.parent.source : o;
+    o.source = opts.fn ? o.parent.source : o;
     
-    o.map = function(fn) {
-      var n = observable(o, { fn: fn, recv: function(d){ return n.next(fn(d, n.i++, n)) } });
+    o.on('stop', function(reason){
+      return o.type
+        ? o.parent.off(o.type, o)
+        : o.parent.off(o)
+    });
+
+    o.each = function(fn) {
+      var n = fn.next ? fn : observable(o, { fn: fn });
       o.li.push(n);
       return n
     };
 
-    o.filter = function(fn) {
-      var n = observable(o, { fn: fn, recv: function(d){ return fn(d, n.i++, n) && n.next(d) } });
-      o.li.push(n);
-      return n
+    o.pipe = function(fn) {
+      return fn(o)
     };
 
-    o.reduce = function(fn, seed) {
-      var n = observable(o, { fn: fn, recv: function(d){ return n.next(seed = fn(seed, d, n.i++, n)) } });
-      o.li.push(n);
-      return n
+    o.map = function(fn){
+      return o.each(function(d, i, n){ return n.next(fn(d, i, n)) })
+    };
+
+    o.filter = function(fn){
+      return o.each(function(d, i, n){ return fn(d, i, n) && n.next(d) })
+    };
+
+    o.reduce = function(fn, acc) {
+      return o.each(function(d, i, n){ return n.next(acc = fn(acc, d, i, n)) })
     };
 
     o.unpromise = function(){ 
-      var n = observable(o, { base: {}, recv: function(d){ return n.next(d) } });
+      var n = observable(o, { base: {}, fn: function(d){ return n.next(d) } });
       o.li.push(n);
       return n
     };
@@ -136,39 +145,36 @@ var index = function emitterify(body) {
     o.next = function(value) {
       o.resolve && o.resolve(value);
       return o.li.length 
-           ? o.li.map(function(o){ return o.recv(value) })
+           ? o.li.map(function(n){ return n.fn(value, n.i++, n) })
            : value
+    };
+
+    o.until = function(stop){
+      stop.each(function(){ o.source.emit('stop'); });
+      return o
     };
 
     o.off = function(fn){
       return remove(o.li, fn), o
     };
 
-    o.unsubscribe = function(reason){
-      o.type 
-        ? o.parent.off(o.type, o)
-        : o.parent.off(o); 
-
-      return o.emit('unsubscribe', (o.reason = reason, o))
-    };
-
-    o[Symbol.asyncIterator] = () => ({ 
-      next: () => new Promise(resolve => {
+    o[Symbol.asyncIterator] = function(){ return { 
+      next: () => (o.wait = new Promise(resolve => {
         o.wait = true;
         o.map((d, i, n) => {
-          o.wait = false;
+          delete o.wait;
           o.off(n);
           resolve({ value: d, done: false });
         });
 
         o.emit('pull', o);
-      })
-    });
+      }))
+    }};
 
     return o
   }
 };
 
-return index;
+return emitterify;
 
 }());

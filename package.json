@@ -3,12 +3,12 @@
   "version": "1.2.0",
   "main": "index.js",
   "scripts": {
-    "test": "istanbul test ./node_modules/mocha/bin/_mocha --report html -- -R spec",
-    "coverage": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && rm -rf ./coverage",
-    "cov": "istanbul cover ./node_modules/mocha/bin/_mocha -- -R spec",
-    "minify": "uglifyjs client.js -m -c drop_console,dead_code -d client=true -o client.min.js",
+    "build": "rollup -c && npm run minify && npm run gzip",
+    "minify": "uglifyjs client.bundle.js -m -c keep_fargs=false -o client.min.js",
     "gzip": "gzip -c client.min.js > client.min.js.gz",
-    "build": "npm run minify && npm run gzip"
+    "test": "node --trace-warnings --harmony-async-iteration ./node_modules/istanbul/lib/cli.js test ./node_modules/mocha/bin/_mocha --report html -- -R spec",
+    "coverage": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && rm -rf ./coverage",
+    "cov": "istanbul cover ./node_modules/mocha/bin/_mocha -- -R spec"
   },
   "author": "Pedram Emrouznejad (https://github.com/pemrouz)",
   "license": "pemrouz.mit-license.org",
@@ -18,16 +18,21 @@
     "istanbul": "^0.3.13",
     "mocha": "^2.2.4",
     "mocha-lcov-reporter": "0.0.2",
+    "uglify-es": "^3.1.1",
+    "rollup": "*",
+    "rollup-plugin-buble": "^0.16.0",
+    "rollup-plugin-commonjs": "^8.2.1",
+    "rollup-plugin-node-resolve": "^3.0.0",
+    "utilise.by": "0.0.2",
     "utilise.clone": "0.0.2",
     "utilise.delay": "0.0.1",
-    "utilise.time": "0.0.4"
+    "utilise.key": "0.0.9",
+    "utilise.time": "0.0.4",
+    "utilise.update": "*"
   },
   "dependencies": {
     "utilise.def": "*",
-    "utilise.err": "*",
-    "utilise.is": "*",
-    "utilise.keys": "*",
-    "utilise.not": "*",
-    "utilise.promise": "0.0.1"
+    "utilise.flatten": "0.0.3",
+    "utilise.promise": "^1.0.0"
   }
 }

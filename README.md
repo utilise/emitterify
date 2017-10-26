@@ -48,18 +48,51 @@ await node.on('click').reduce(acc => ++acc).filter(d => d == 10)
 // node clicked 10 times 
 ```
 
+#### Signals 
+
+When you do `emitter.on(event)` it returns a channel through which events flow. The channel itself is emitterified so it can be used to communicate and respond to various events. There are few common ones such as `start`, `stop` for lazy subscriptions, but in contrast to other implementations, these are not hardcoded, which means you can also communicate other signals, such as the completion `progress` of a channel, whether the original request for a stream of server responses has been `sent` yet, etc. This affords much greater flexibility without any extra API, and the design becomes obvious when you realise that these are all _qualities of the channel itself_, and since they are _events_, they have the same reactive interface as other stream of events.
+
+```js
+foo
+  .on('value')
+  .on('start', () => {})      // stream of meta-events, orthogonal to original channel ---->  
+  .on('stop', () => {})       // stream of meta-events, orthogonal to original channel ----> 
+  .on('progress', () => {})   // stream of meta-events, orthogonal to original channel ----> 
+  // |
+  // ↓
+  // values flow down through the main channel
+```
+
+#### CSP 
+
+Observables (FRP) "push" values, whereas streams with backpressure or channels (CSP) will generally allow the consumer to process values according to it's own pace or "pull" values. This is important for certain types of operations where you don't want to overwhelm consumers. This is a natural fit here too, since channels implement the async iterator Symbol and so allow producers to respond to consumers that are already waiting and push new values only as they are requested. This is done via the stream of `pull` events on the channel. Using the canonical example, let's say we create `chan = o.on('foo')` and then pass this to the following threads:
+
+```js
+async producer(chan, i = 0) => {
+  for await (const d of chan.on('pull'))
+    chan.next(++i)
+}
+
+async consumer (chan) => {
+  for await (const d of chan)
+    if (results.push(d) == 10) break
+}
+```
+
+These two functions work co-operatively: the consumer is "pulling" values from the channel, whilst the producer is pushing them when requested. 
+
 ## Operators 
 
-The only observable operators included are `.map`/`.filter`/`.reduce`, everything else can be implemented as a separate operator outside the core - similar to how [utilise](https://github.com/utilise/utilise#lean-javascript-utilities-as-micro-libraries) complements the native Array operators in contrast to lodash. Below is a few example operators. They are so small, that's it probably not even worth publishing these to npm.
+The only observable operators included are `.map`/`.filter`/`.reduce`, everything else can be implemented as a separate operator outside the core - similar to how [utilise](https://github.com/utilise/utilise#lean-javascript-utilities-as-micro-libraries) complements the native Array operators in contrast to lodash which attempts to replace them. Below is a few example operators. They are so small, that's it probably not even worth publishing these to npm.
 
-* #### Sum (8 chars)
+* #### Sum (18 chars)
 
   ```js
-  sum = acc => ++acc
+  sum = (acc = 0) => ++acc
   events.reduce(sum)
   ```
 
-  The `acc` variable is initialised to `0` if no initial value is specified. We just increment this value on every event and return it, which becomes the value of `acc` on the next event.
+  We just increment `acc` on every event and return it, which becomes the value of `acc` on the next event.
 
 * #### Flatmap (26 chars) - [see full test example]()
 
@@ -85,20 +118,35 @@ The only observable operators included are `.map`/`.filter`/`.reduce`, everythin
 
   This is similar to the previous flatmap case, however when we receive a new stream, we stop emitting values from the previous stream. This is why we store a reference to the stream in `n.prev` so we can unsubscribe from it next time.
 
-* #### TakeUntil (38 chars)
+* #### Until (38 chars)
 
   See [the ES6 Observable repo](https://github.com/tc39/proposal-observable/blob/master/Why%20error%20and%20complete.md#declarative-concurrency-in-async-functions-using-takeuntil) for an explanation of how you might want to use two infinite streams to create a single finite stream. 
 
+  This operator is now built-in so you can do things like:
+
   ```js
-  until = stop => (d, i, n) => n.until = n.until || stop.then(d => n.off())
-  events.filter(until(stop))
+  node
+    .on('click')
+    .map(..)
+    .filter(...)
+    .until(node.once('removed'))
   ```
 
-  This returns something (a truthy) so events continue to flow through it as normal. However, we also listen to the stop signal and as soon as it emits a value, we unsubscribe all our listeners.
+* #### Pipe
+
+  Instead of abusing the `.filter` operator, if your custom operator needs to do things on startup, a better way to write them would be (all the following are equivalent):
+
+  ```js
+  buffer(stream)
+  stream |> buffer
+  stream.pipe(buffer)
+  ```
+
+  This essentially takes in a stream, and returns a new stream, controlling the flow between them (e.g. buffering) and proxying signals back upstream as necessary (e.g. unsubscription). This is the best way to write operators, especially if you also want to encapsulate the underlying input stream. The built-in operators (`map`/`filter`/`reduce`) are written in the same way so you could also write `stream.pipe(map(...)).pipe(filter(...)).pipe(reduce(...))` if you prefer.
 
 ## Related Libraries
 
-This events in the following libraries all use this interface:
+The events in the following libraries all use this interface:
 
 * Remote Resources in browser with [ripple](https://github.com/rijs/fullstack): `ripple('resource').on('change').map(...)`
 * DOM Elements with [once](https://github.com/utilise/once): `element.on('click').map(...)` 

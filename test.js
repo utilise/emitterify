@@ -1,9 +1,12 @@
 var expect = require('chai').expect
+  , update = require('utilise.update')
   , delay = require('utilise.delay')
   , clone = require('utilise.clone')
   , time = require('utilise.time')
+  , key = require('utilise.key')
+  , by = require('utilise.by')
   , emitterify = require('./')
-
+  
 describe('emitterify', function() {
   it('should add api to object', function() {
     var o = emitterify({})
@@ -36,7 +39,7 @@ describe('emitterify', function() {
     var o = emitterify({})
     o.once('change', String)
     expect(o.on.change).to.eql([String])
-    expect(o.on.change[0].once).to.be.ok
+    expect(o.on.change[0].isOnce).to.be.ok
   })
 
   it('should emit an event', function() {
@@ -134,8 +137,12 @@ describe('emitterify', function() {
     /* istanbul ignore next */
     o.on('change.not-called', d => results.push('not-called'))
     o.on('change.called', d => results.push('called'))
-    o.emit('change', 'x', ns => ns != 'not-called')
-    expect(results).to.eql(['called'])
+    /* istanbul ignore next */
+    o.on('change.o-not-called').map(d => results.push('not-called'))
+    o.on('change.o-called').map(d => results.push('o-called'))
+
+    o.emit('change', 'x', ns => ns != 'not-called' && ns != 'o-not-called')
+    expect(results).to.eql(['called', 'o-called'])
   })
 
   it('should invoke namespaced listeners on generic call', function() {
@@ -378,19 +385,31 @@ describe('emitterify', function() {
     o.on('test', fn2)
     expect(o.on.test.length).to.be.eql(2)
 
-    o.off('test', fn1)
+    expect(o.off('test', fn1)).to.be.eql(o)
     expect(o.on.test.length).to.be.eql(1)
     
     o.emit('test', 1)
     expect(result1).to.be.not.ok
     expect(result2).to.be.eql(1)
 
-    o.off('test')
+    expect(o.off('test')).to.be.eql(o)
 
     o.emit('test', 2)
     expect(result1).to.be.not.ok
     expect(result2).to.be.eql(1)
     expect(o.on.test.length).to.be.eql(0)
+  })
+
+  it('should remove namespaced listeners', function() {
+    var o = emitterify({})
+      , cb = function(){}
+
+    o.on('foo.bar', cb)
+    expect(o.on.foo.length).to.be.eql(1)
+    expect(o.on.foo.$bar).to.be.eql(cb)
+    o.off('foo', cb)
+    expect(o.on.foo.length).to.be.eql(0)
+    expect(o.on.foo.$bar).to.be.not.ok
   })
 
   it('should unsubscribe observables', function() {
@@ -406,6 +425,18 @@ describe('emitterify', function() {
 
     o1.emit('test', 'x')
     expect(results).to.be.eql(['x'])
+  })
+
+  it('should unsubscribe namespaced observables', function() {
+    var results = []
+      , o = emitterify({})
+      , foo = o.on('foo.bar')
+
+    expect(o.on.foo.length).to.be.eql(1)
+    expect(o.on.foo.$bar).to.be.eql(foo)
+    o.off('foo', foo)
+    expect(o.on.foo.length).to.be.eql(0)
+    expect(o.on.foo.$bar).to.be.not.ok
   })
 
   it('should pass index to observables operators', function() {
@@ -431,6 +462,12 @@ describe('emitterify', function() {
     expect(results).to.be.eql(['a'])
   })
 
+  it('should allow signals on observable (once)', function(done) {
+    var o = emitterify({}).on('foo')
+    o.once('done').map(done)
+    o.emit('done')
+  })
+
   it('flatmap operator (flatten)', function(){
     var numbers = emitterify()
       , even = emitterify()
@@ -442,15 +479,15 @@ describe('emitterify', function() {
       .filter(flatten)
       .map(d => results.push(d))
 
-    numbers.emit('test', even.on('value'))
-    numbers.emit('test', odd.on('value'))
+    numbers.emit('test', even.on('number'))
+    numbers.emit('test', odd.on('number'))
 
-    odd.emit('value', 1)
-    even.emit('value', 2)
-    odd.emit('value', 3)
-    even.emit('value', 4)
-    odd.emit('value', 5)
-    even.emit('value', 6)
+    odd.emit('number', 1)
+    even.emit('number', 2)
+    odd.emit('number', 3)
+    even.emit('number', 4)
+    odd.emit('number', 5)
+    even.emit('number', 6)
 
     expect(results).to.be.eql([1,2,3,4,5,6])
 
@@ -465,27 +502,112 @@ describe('emitterify', function() {
       , odd = emitterify()
       , results = []
 
-    numbers
-      .on('test')
-      .filter(latest)
+    var stream = numbers
+      .on('number')
+      .pipe(latest)
       .map(d => results.push(d))
 
-    numbers.emit('test', even.on('value'))
+    numbers.emit('number', even.on('number'))
 
-    odd.emit('value', 1)
-    even.emit('value', 2)
+    odd.emit('number', 1)
+    even.emit('number', 2)
     
-    numbers.emit('test', odd.on('value'))
+    numbers.emit('number', odd.on('number'))
     
-    odd.emit('value', 3)
-    even.emit('value', 4)
+    odd.emit('number', 3)
+    even.emit('number', 4)
     
     expect(results).to.be.eql([2,3])
 
-    function latest(d, i, n) {
-      if (n.prev) n.prev.off(n.next)
-      ;(n.prev = d).map(n.next)
+    stream.source.emit('stop')
+
+    expect(odd.on.number.length).to.be.not.ok
+    expect(even.on.number.length).to.be.not.ok
+    expect(numbers.on.number.length).to.be.not.ok
+    
+    function latest(input) {
+      var inner
+      input
+        .source
+        .on('stop')
+        .filter(d => inner)
+        .each(d => inner.emit('stop'))
+
+      return input.each((d, i, n) => {
+        if (inner) {
+          inner.off(n.next)
+          inner.source.emit('stop')
+        }
+        ;(inner = d).each(n.next)
+      }) 
     }     
+  })
+
+  it('buffer operator (stream-esque)', function(){
+    const buffer = (fn, buffer = []) => (d, i, n) => {
+      n.on('subscribe.flush', () => {
+        while (buffer.length)
+          n.next(fn(buffer.shift(), 0, n))
+        n.subscribed = true
+      })
+
+      n.subscribed ? n.next(fn(d, i, n)) : buffer.push(d)
+    }
+
+    const o = emitterify()
+        , results = []
+        , buffered = o.on('number').filter(buffer(d => d * 2))
+
+    o.emit('number', 1)
+    o.emit('number', 2)
+    o.emit('number', 3)
+
+    buffered.map(d => results.push(d))
+    buffered.emit('subscribe')
+
+    o.emit('number', 4)
+
+    expect(results).to.be.eql([2, 4, 6, 8])
+  })
+
+  it('lens (subset)', function(){
+    const lens = body => (path = '') => emitterify()
+      .on('number')
+      .on('subscribe', function(){
+        this.next({ type: 'update', key: path, value: key(path)(body) })
+        this.source.lens = body
+          .on('change')
+          .filter(by('key', (d = '') => d.startsWith(path)))
+          .map(this.next)
+      })
+      .on('unsubscribe', function(){
+         this.source.lens
+          .source
+          .unsubscribe()
+      })
+
+    const o = emitterify({ foo: 'bar' })
+        , results = { all: [], foo: [] }
+        , all = lens(o)()
+        , foo = lens(o)('foo')
+
+    all.map(d => results.all.push(clone(d))).source.emit('subscribe')
+    foo.map(d => results.foo.push(clone(d))).source.emit('subscribe')
+
+    update('foo', 'baz')(o)
+    update('bar', 'foo')(o)
+
+    expect(results).to.be.eql({
+      all: [
+        { type: 'update', key: '', value: { foo: 'bar' }}
+      , { type: 'update', key: 'foo', value: 'baz' }
+      , { type: 'update', key: 'bar', value: 'foo' }
+      ]
+    , foo: [
+        { type: 'update', key: 'foo', value: 'bar' }
+      , { type: 'update', key: 'foo', value: 'baz' }
+      ]
+    })
   })
 
   it('should not reuse observables by default (once)', function(){
@@ -496,12 +618,12 @@ describe('emitterify', function() {
 
     expect(foo).to.not.be.equal(bar)
 
-    foo.map(noop)
-    bar.map(noop)
+    foo.each(noop)
+    bar.each(noop)
 
-    expect(foo.listeners.map(function(d){ return d.fn })).to.be.eql([noop])
-    expect(bar.listeners.map(function(d){ return d.fn })).to.be.eql([noop])
-    expect(o.once('foo').listeners).to.be.eql([])
+    expect(foo.li.map(function(d){ return d.fn })).to.be.eql([noop])
+    expect(bar.li.map(function(d){ return d.fn })).to.be.eql([noop])
+    expect(o.once('foo').li).to.be.eql([])
   })
 
   it('should not reuse observables by default (on)', function(){
@@ -512,12 +634,12 @@ describe('emitterify', function() {
 
     expect(foo).to.not.be.equal(bar)
 
-    foo.map(noop)
-    bar.map(noop)
+    foo.each(noop)
+    bar.each(noop)
 
-    expect(foo.listeners.map(function(d){ return d.fn })).to.be.eql([noop])
-    expect(bar.listeners.map(function(d){ return d.fn })).to.be.eql([noop])
-    expect(o.on('foo').listeners).to.be.eql([])
+    expect(foo.li.map(function(d){ return d.fn })).to.be.eql([noop])
+    expect(bar.li.map(function(d){ return d.fn })).to.be.eql([noop])
+    expect(o.on('foo').li).to.be.eql([])
   })
 
   it('should reuse observables by namespace (once)', function(){
@@ -528,10 +650,12 @@ describe('emitterify', function() {
 
     expect(foo).to.be.equal(bar)
 
-    foo.map(noop)
-    bar.map(noop)
+    foo.each(noop)
+    bar.each(noop)
 
-    expect(o.once('foo.specific').listeners.map(function(d){ return d.fn })).to.be.eql([noop, noop])
+    expect(
+      o.once('foo.specific').li.map(function(d){ return d.fn })
+    ).to.be.eql([noop, noop])
   })
 
   it('should reuse observables by namespace (on)', function(){
@@ -542,10 +666,12 @@ describe('emitterify', function() {
 
     expect(foo).to.be.equal(bar)
 
-    foo.map(noop)
-    bar.map(noop)
+    foo.each(noop)
+    bar.each(noop)
 
-    expect(o.on('foo.specific').listeners.map(function(d){ return d.fn })).to.be.eql([noop, noop])
+    expect(
+      o.on('foo.specific').li.map(function(d){ return d.fn })
+    ).to.be.eql([noop, noop])
   })
 
   it('should allow observable unsubscribing from another observable', function(){
@@ -557,18 +683,34 @@ describe('emitterify', function() {
     expect(bar.parent).to.be.eql(foo)
 
     o.emit('foo')
-    bar.unsubscribe()
+    bar.emit('stop')
     o.emit('foo')
 
     expect(result).to.be.eql(1)
-    expect(bar.parent).to.be.not.ok
+    expect(foo.li.length).to.be.not.ok
+    // expect(bar.parent).to.be.not.ok
+  })
+
+  it('should allow observable unsubscribing from another observable from grandchildren', function(){
+    var o = emitterify()
+      , foo = o.on('foo')
+      , bar = foo.map(d => d).map(d => d).map(d => result++)
+      , result = 0
+
+    o.emit('foo')
+    bar.emit('stop')
+    o.emit('foo')
+
+    expect(result).to.be.eql(1)
+    // expect(bar.parent).to.be.not.ok
+    // expect(bar.source).to.be.not.ok
   })
 
   it('should allow observable unsubscribing from another observable internally', function(){
     var o = emitterify()
       , result = 0
 
-    o.on('foo').filter((m, i, n) => n.unsubscribe()).map(d => result++)
+    o.on('foo').filter((m, i, n) => n.emit('stop')).map(d => result++)
 
     o.emit('foo')
     o.emit('foo')
@@ -586,11 +728,12 @@ describe('emitterify', function() {
     expect(foo.parent).to.be.eql(o)
 
     o.emit('foo')
-    foo.unsubscribe()
+    foo.emit('stop')
     o.emit('foo')
 
     expect(result).to.be.eql(1)
-    expect(foo.parent).to.be.not.ok
+    expect(o.on.foo.length).to.be.not.ok
+    // expect(foo.parent).to.be.not.ok
   })
 
   it('should allow observable unsubscribing from source from grandchildren', function(){
@@ -599,14 +742,246 @@ describe('emitterify', function() {
       , foo = source.map(d => d).map(d => d).map(d => result++)
       , result = 0
 
+    expect(source.source).to.be.eql(source)
     expect(foo.source).to.be.eql(source)
 
     o.emit('foo')
-    foo.source.unsubscribe()
+    foo.source.emit('stop')
     o.emit('foo')
 
     expect(result).to.be.eql(1)
-    expect(foo.source).to.be.not.ok
+    expect(o.on.foo.length).to.be.not.ok
+    // expect(foo.parent).to.be.ok // TODO: unsub all parents in between too?
+    // expect(foo.source).to.be.not.ok
   })
 
+  it('should allow observable unsubscribing from namespaced source', function(){
+    var o = emitterify()
+      , foo = o.on('foo.ns')
+      
+    expect(o.on.foo.$ns).to.be.eql(foo)
+    expect(o.on.foo.length).to.be.eql(1)
+    foo.emit('stop')
+    expect(o.on.foo.$ns).to.be.not.ok
+    expect(o.on.foo.length).to.be.eql(0)
+  })
+
+  it('should allow custom handling of unsubscribe signal', function(){
+    var o = emitterify()
+      , source = o.on('foo.ns')
+      , foo = source.map(d => d).map(d => result++)
+      , result = 0
+
+    source.on('stop').each(function(reason, i, n) {
+      expect(reason).to.be.eql('reason')
+      expect(o.on.foo.length).to.be.not.ok
+      return 'ack'
+    })
+
+    expect(o.on.foo.length).to.be.ok
+    expect(foo.source.emit('stop', 'reason')).to.be.eql([{}, 'ack'])
+  })
+
+  it('should allow creating lazy subscriptions', function(){
+    var o = emitterify({ foo: 'bar' })
+      , results = []
+      , n = o.on('value')
+      , l = n.on('start', function(){
+          this.next({ type: 'update', value: o })
+          o.on('change')
+            .map(this.next)
+            .source
+            .until(this.once('stop'))
+        })
+        .map(d => results.push(d))
+    
+    // before start (ignore)
+    o.emit('change', { type: 'update', key: 'baz', value: '1' })
+    expect(results).to.be.eql([])
+
+    // start and resend
+    l.source.emit('start')
+    o.emit('change', { type: 'update', key: 'baz', value: '2' })
+
+    // stop and resend (ignore)
+    l.source.emit('stop')
+    o.emit('change', { type: 'update', key: 'baz', value: '3' })
+
+    expect(results).to.be.eql([
+      { type: 'update', value: { foo: 'bar' }}
+    , { type: 'update', key: 'baz', value: '2' }
+    ])
+  })
+
+  it('asyncIterator: should consume without buffering', async function(done) {
+    const o = emitterify({})
+        , results = []
+        , thread = async () => {
+            for await (const d of o.on('foo')) {
+              results.push(d)
+            }
+          }
+
+    thread()
+    time(10, d => o.emit('foo', 10))
+    time(20, d => o.emit('foo', 20))
+    time(30, d => o.emit('foo', 30))
+    time(40, d => { 
+      expect(results).to.be.eql([10, 20, 30])
+      done() 
+    })
+  })
+
+  it('asyncIterator: should drop values without buffering', async function(done) {
+    const o = emitterify({})
+        , results = []
+        , thread = async () => {
+            for await (const d of o.on('foo')) {
+              results.push(d)
+            }
+          }
+
+    thread()
+    o.emit('foo', 10)
+    o.emit('foo', 20)
+    o.emit('foo', 30)
+    time(10, d => { 
+      expect(results).to.be.eql([10])
+      done() 
+    })
+  })
+
+  it('asyncIterator: should buffer synchronous pushes (buffer operator)', async function(done) {
+    const o = emitterify({})
+        , results = []
+        , buffer = (d, i, n) => {
+            n.buffer = n.buffer || []
+            n.pull = n.pull || n.on('pull')
+              .filter(d => n.buffer.length)
+              .map(d => n.next(n.buffer.shift()))
+
+            if (n.wait)
+              n.next(d)
+            else
+              n.buffer.push(d)
+          }
+        , thread = async () => {
+            for await (const d of o.on('foo').filter(buffer)) 
+              results.push(d)
+          }
+
+    thread()
+    o.emit('foo', 10)
+    o.emit('foo', 20)
+    o.emit('foo', 30)
+    time(d => { 
+      expect(results).to.be.eql([10, 20, 30])
+      done()
+    })
+  })
+
+  it('asyncIterator: should buffer synchronous pushes (declarative)', async function(done) {
+    const o = emitterify()
+        , results = []
+        , buffer = input => {
+            const output = emitterify().on('bar') //input.filter(d => false)
+                , buffer = []
+
+            output
+              .on('pull')
+              .filter(o => buffer.length)
+              .map(o => o.next(buffer.shift()))
+
+            input
+              .filter(d => buffer.push(d))
+              .filter(d => output.wait)
+              .filter(d => output.next(buffer.shift()))
+              
+            return output
+          }
+        , thread = async () => {
+            for await (const d of o.on('foo').pipe(buffer))
+              results.push(d)
+          }
+
+// o.on('foo').pipe(buffer)
+//   , buffer = input => {
+//       const output = emitterify().on('bar')
+//           , buffer = []
+
+//       output
+//         .on('pull')
+//         .filter(o => buffer.length)
+//         .map(o => o.next(buffer.shift()))
+
+//       input
+//         .filter(d => buffer.push(d))
+//         .filter(d => output.wait)
+//         .filter(d => output.next(buffer.shift()))
+        
+//       return output
+//     }
+
+
+    thread()
+    o.emit('foo', 10)
+    o.emit('foo', 20)
+    o.emit('foo', 30)
+    time(d => { 
+      expect(results).to.be.eql([10, 20, 30])
+      done()
+    })
+  })
+
+  it('asyncIterator: should csp', async function(done) {
+    const o = emitterify({})
+        , threads = {
+            consumer: async chan => {
+              for await (const d of chan)
+                if (results.push(d) == 10) break
+            }
+          , producer: async (chan, i = 0) => {
+              for await (const d of chan.on('pull'))
+                chan.next(++i)
+            }
+          }
+        , results = []
+
+    const chan = o.on('foo')
+    threads.producer(chan)
+    threads.consumer(chan)
+
+    time(d => { 
+      expect(results).to.be.eql([1,2,3,4,5,6,7,8,9,10])
+      done()
+    })
+  })
+
+  it('should allow unpromisifying', done => {
+    const results = []
+        , o = emitterify()
+
+    const a = o.on('foo').map(d => d * 2)
+        , asyncFnA = () => a
+
+    Promise
+      .resolve()
+      .then(asyncFnA)
+      .then(d => results.push(d))
+
+    const b = o.on('foo').map(d => d * 3).unpromise()
+        , asyncFnB = () => b
+
+    Promise
+      .resolve()
+      .then(asyncFnB)
+      .then(d => results.push(d))
+
+    o.emit('foo', 2)
+
+    time(d => {
+      expect(results).to.be.eql([b, 4])
+      done()
+    })
+  })
 })

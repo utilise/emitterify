@@ -1,4 +1,5 @@
 var promise = require('utilise.promise')
+  , flatten = require('utilise.flatten')
   , def     = require('utilise.def')
   
 module.exports = function emitterify(body) {
@@ -7,43 +8,44 @@ module.exports = function emitterify(body) {
   def(body, 'once', once, 1)
   def(body, 'off', off, 1)
   def(body, 'on', on, 1)
-  body.on['*'] = []
+  body.on['*'] = body.on['*'] || []
   return body
 
   function emit(type, pm, filter) {
     var li = body.on[type.split('.')[0]] || []
-    
+      , results = []
+
     for (var i = 0; i < li.length; i++)
       if (!li[i].ns || !filter || filter(li[i].ns))
-        call(li[i].once ? li.splice(i--, 1)[0] : li[i], pm)
+        results.push(call(li[i].isOnce ? li.splice(i--, 1)[0] : li[i], pm))
 
     for (var i = 0; i < body.on['*'].length; i++)
-      call(body.on['*'][i], [type, pm])
+      results.push(call(body.on['*'][i], [type, pm]))
 
-    return body
+    return results.reduce(flatten, [])
   }
-
 
   function call(cb, pm){
-      cb.next             ? cb.next(pm) 
-    : pm instanceof Array ? cb.apply(body, pm) 
-                          : cb.call(body, pm) 
+    return cb.next             ? cb.next(pm) 
+         : pm instanceof Array ? cb.apply(body, pm) 
+                               : cb.call(body, pm) 
   }
 
-  function on(type, cb, once) {
+  function on(type, opts, isOnce) {
     var id = type.split('.')[0]
       , ns = type.split('.')[1]
       , li = body.on[id] = body.on[id] || []
-      
-    return !cb &&  ns ? (cb = body.on[id]['$'+ns]) ? cb : push(observable(body))
-         : !cb && !ns ? push(observable(body))
+      , cb = typeof opts == 'function' ? opts : 0
+
+    return !cb &&  ns ? (cb = body.on[id]['$'+ns]) ? cb : push(observable(body, opts))
+         : !cb && !ns ? push(observable(body, opts))
          :  cb &&  ns ? push((remove(li, body.on[id]['$'+ns] || -1), cb))
          :  cb && !ns ? push(cb)
                       : false
 
     function push(cb){
-      cb.once = once
-      cb.type = type
+      cb.isOnce = isOnce
+      cb.type = id
       if (ns) body.on[id]['$'+(cb.ns = ns)] = cb
       li.push(cb)
       return cb.next ? cb : body
@@ -63,56 +65,82 @@ module.exports = function emitterify(body) {
 
   function off(type, cb) {
     remove((body.on[type] || []), cb)
-    if (cb && cb.ns) delete li['$'+cb.ns]
+    if (cb && cb.ns) delete body.on[type]['$'+cb.ns]
+    return body
   }
 
-  function observable(parent, fn) {
-    var o = promise()
-    o.listeners = []
-    o.parent = parent
-    o.fn = fn
+  function observable(parent, opts) {
+    opts = opts || {}
+    var o = emitterify(opts.base || promise())
     o.i = 0
-    Object.defineProperty(o, 'source', parent.emit 
-      ? { value: o, writable: true }
-      : { get: function(){ return parent.source } }
-    )
+    o.li = []
+    o.fn = opts.fn
+    o.parent = parent
+    o.source = opts.fn ? o.parent.source : o
     
-    o.map = function(fn) {
-      var n = observable(o, fn)
-      o.listeners[o.listeners.push(function(d, i){ n.next(fn(d, i, n)) }) - 1].fn = fn
+    o.on('stop', function(reason){
+      return o.type
+        ? o.parent.off(o.type, o)
+        : o.parent.off(o)
+    })
+
+    o.each = function(fn) {
+      var n = fn.next ? fn : observable(o, { fn: fn })
+      o.li.push(n)
       return n
     }
 
-    o.filter = function(fn) {
-      var n = observable(o, fn)
-      o.listeners[o.listeners.push(function(d, i){ fn(d, i, n) && n.next(d) }) - 1].fn = fn
+    o.pipe = function(fn) {
+      return fn(o)
+    }
+
+    o.map = function(fn){
+      return o.each(function(d, i, n){ return n.next(fn(d, i, n)) })
+    }
+
+    o.filter = function(fn){
+      return o.each(function(d, i, n){ return fn(d, i, n) && n.next(d) })
+    }
+
+    o.reduce = function(fn, acc) {
+      return o.each(function(d, i, n){ return n.next(acc = fn(acc, d, i, n)) })
+    }
+
+    o.unpromise = function(){ 
+      var n = observable(o, { base: {}, fn: function(d){ return n.next(d) } })
+      o.li.push(n)
       return n
     }
 
-    o.reduce = function(fn, seed) {
-      var n = observable(o, fn)
-      o.listeners[o.listeners.push(function(d, i){ n.next(seed = fn(seed, d, i, n)) }) - 1].fn = fn
-      return n
+    o.next = function(value) {
+      o.resolve && o.resolve(value)
+      return o.li.length 
+           ? o.li.map(function(n){ return n.fn(value, n.i++, n) })
+           : value
     }
 
-    o.next = function(d) {
-      o.resolve(d)
-      o.listeners.map(function(fn){ fn(d, o.i) })
-      o.i++
+    o.until = function(stop){
+      stop.each(function(){ o.source.emit('stop') })
       return o
     }
 
     o.off = function(fn){
-      return remove(o.listeners, fn), o
+      return remove(o.li, fn), o
     }
 
-    o.unsubscribe = function(){
-      o.fn ? o.parent.off(o.fn) : o.parent.off(o.type, o)
-      o.parent = o.source = undefined
-      return o
-    }
+    o[Symbol.asyncIterator] = function(){ return { 
+      next: () => (o.wait = new Promise(resolve => {
+        o.wait = true
+        o.map((d, i, n) => {
+          delete o.wait
+          o.off(n)
+          resolve({ value: d, done: false })
+        })
+
+        o.emit('pull', o)
+      }))
+    }}
 
     return o
-
   }
 }
