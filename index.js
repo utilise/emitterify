@@ -131,14 +131,13 @@ module.exports = function emitterify(body) {
     o[Symbol.asyncIterator] = function(){ 
       return { 
         next: function(){ 
-          return o.wait = new Promise(resolve => {
+          return o.wait = new Promise(function(resolve){
             o.wait = true
-            o.map((d, i, n) => {
+            o.map(function(d, i, n){
               delete o.wait
               o.off(n)
               resolve({ value: d, done: false })
             })
-
             o.emit('pull', o)
           })
         }
