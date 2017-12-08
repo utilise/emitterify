@@ -683,10 +683,11 @@ describe('emitterify', function() {
     expect(bar.parent).to.be.eql(foo)
 
     o.emit('foo')
-    bar.emit('stop')
+    bar.emit('stop', 'reason')
     o.emit('foo')
 
     expect(result).to.be.eql(1)
+    expect(bar.reason).to.be.eql('reason')
     expect(foo.li.length).to.be.not.ok
     // expect(bar.parent).to.be.not.ok
   })

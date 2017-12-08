@@ -79,6 +79,7 @@ module.exports = function emitterify(body) {
     o.source = opts.fn ? o.parent.source : o
     
     o.on('stop', function(reason){
+      o.reason = reason
       return o.type
         ? o.parent.off(o.type, o)
         : o.parent.off(o)
