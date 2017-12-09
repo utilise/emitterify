@@ -780,7 +780,7 @@ describe('emitterify', function() {
     })
 
     expect(o.on.foo.length).to.be.ok
-    expect(foo.source.emit('stop', 'reason')).to.be.eql([{}, 'ack'])
+    expect(foo.source.emit('stop', 'reason')).to.be.eql(['reason', 'ack'])
   })
 
   it('should allow creating lazy subscriptions', function(){
@@ -985,4 +985,19 @@ describe('emitterify', function() {
       done()
     })
   })
+
+  it('should correctly chain stop signal', () => {
+    const results = []
+        , o = emitterify()
+        , n = emitterify()
+
+    o.on('foo')
+      .on('stop', reason => 'stopped ' + reason)
+      .map(d => d)
+      .until(n.once('stop'))
+
+    expect(n.emit('stop', 'reason'))
+      .to.be.eql(['reason', 'stopped reason'])
+  })
+
 })

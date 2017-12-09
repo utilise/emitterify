@@ -79,10 +79,10 @@ module.exports = function emitterify(body) {
     o.source = opts.fn ? o.parent.source : o
     
     o.on('stop', function(reason){
-      o.reason = reason
-      return o.type
+      o.type
         ? o.parent.off(o.type, o)
         : o.parent.off(o)
+      return o.reason = reason
     })
 
     o.each = function(fn) {
@@ -121,7 +121,7 @@ module.exports = function emitterify(body) {
     }
 
     o.until = function(stop){
-      stop.each(function(){ o.source.emit('stop') })
+      stop.each(function(reason){ return o.source.emit('stop', reason) })
       return o
     }
 
