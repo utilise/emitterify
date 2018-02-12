@@ -121,7 +121,7 @@ module.exports = function emitterify(body) {
     }
 
     o.until = function(stop){
-      stop.each(function(reason){ return o.source.emit('stop', reason) })
+      (stop.each || stop.then)(function(reason){ return o.source.emit('stop', reason) })
       return o
     }
 
