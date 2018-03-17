@@ -132,6 +132,11 @@ module.exports = function emitterify(body, hooks) {
       return remove(o.li, fn), o
     }
 
+    o.start = function(fn){
+      o.source.emit('start')
+      return o
+    }
+
     o[Symbol.asyncIterator] = function(){ 
       return { 
         next: function(){ 
