@@ -32,8 +32,11 @@ var utilise_def = function def(o, p, v, w){
   return o[p]
 };
 
-var emitterify = function emitterify(body) {
+var noop = function(){};
+
+var emitterify = function emitterify(body, hooks) {
   body = body || {};
+  hooks = hooks || {};
   utilise_def(body, 'emit', emit, 1);
   utilise_def(body, 'once', once, 1);
   utilise_def(body, 'off', off, 1);
@@ -77,7 +80,8 @@ var emitterify = function emitterify(body) {
       cb.isOnce = isOnce;
       cb.type = id;
       if (ns) body.on[id]['$'+(cb.ns = ns)] = cb;
-      li.push(cb);
+      li.push(cb)
+      ;(hooks.on || noop)(cb);
       return cb.next ? cb : body
     }
   }
@@ -90,7 +94,7 @@ var emitterify = function emitterify(body) {
     var i = li.length;
     while (~--i) 
       if (cb == li[i] || cb == li[i].fn || !cb)
-        li.splice(i, 1);
+        (hooks.off || noop)(li.splice(i, 1)[0]);
   }
 
   function off(type, cb) {
@@ -109,9 +113,10 @@ var emitterify = function emitterify(body) {
     o.source = opts.fn ? o.parent.source : o;
     
     o.on('stop', function(reason){
-      return o.type
+      o.type
         ? o.parent.off(o.type, o)
-        : o.parent.off(o)
+        : o.parent.off(o);
+      return o.reason = reason
     });
 
     o.each = function(fn) {
@@ -150,7 +155,7 @@ var emitterify = function emitterify(body) {
     };
 
     o.until = function(stop){
-      stop.each(function(){ o.source.emit('stop'); });
+      (stop.each || stop.then).call(stop, function(reason){ return o.source.emit('stop', reason) });
       return o
     };
 
@@ -158,18 +163,26 @@ var emitterify = function emitterify(body) {
       return remove(o.li, fn), o
     };
 
-    o[Symbol.asyncIterator] = function(){ return { 
-      next: () => (o.wait = new Promise(resolve => {
-        o.wait = true;
-        o.map((d, i, n) => {
-          delete o.wait;
-          o.off(n);
-          resolve({ value: d, done: false });
-        });
+    o.start = function(fn){
+      o.source.emit('start');
+      return o
+    };
 
-        o.emit('pull', o);
-      }))
-    }};
+    o[Symbol.asyncIterator] = function(){ 
+      return { 
+        next: function(){ 
+          return o.wait = new Promise(function(resolve){
+            o.wait = true;
+            o.map(function(d, i, n){
+              delete o.wait;
+              o.off(n);
+              resolve({ value: d, done: false });
+            });
+            o.emit('pull', o);
+          })
+        }
+      }
+    };
 
     return o
   }
