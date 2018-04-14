@@ -1000,21 +1000,23 @@ describe('emitterify', function() {
       .to.be.eql(['reason', 'stopped reason'])
   })
 
-  it('should stop via condition function', () => {
-    const results = []
-        , o = emitterify()
-        , $ = o.on('foo')
-
-    $.until(d => (d > 3 && results.push('stopped at: ' + d)))
+  it('should stop via condition function', done => {
+    const o = emitterify()
+    
+    o.on('foo.bar')
+      .on('stop', reason => 'stopped at: ' + reason)
+      .until(d => d > 3)
+      .then(d => {
+        expect(d).to.be.eql([4, 'stopped at: 4'])
+        done()
+      })
 
     expect(o.on.foo.length).to.be.eql(1)
-    expect($.li.length).to.be.eql(1)
+    expect(o.on.foo.$bar.li.length).to.be.eql(1)
     o.emit('foo', 2)
     o.emit('foo', 3)
     o.emit('foo', 4)
     expect(o.on.foo.length).to.be.eql(0)
-    expect($.li.length).to.be.eql(1)
-    expect(results).to.be.eql(['stopped at: 4'])
   })
 
 })
