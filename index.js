@@ -124,7 +124,8 @@ module.exports = function emitterify(body, hooks) {
     }
 
     o.until = function(stop){
-      return stop.each ? stop.each(o.stop) // TODO: check clean up on stop too
+      return !stop     ? 0
+           : stop.each ? stop.each(o.stop) // TODO: check clean up on stop too
            : stop.then ? stop.then(o.stop)
            : stop.call ? o.filter(stop).map(o.stop)
                        : 0
