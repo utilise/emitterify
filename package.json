@@ -1,6 +1,6 @@
 {
   "name": "utilise.emitterify",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "main": "index.js",
   "scripts": {
     "build": "rollup -c && npm run minify && npm run gzip",
