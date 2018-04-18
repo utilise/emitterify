@@ -134,7 +134,8 @@ module.exports = function emitterify(body, hooks) {
       return remove(o.li, fn), o
     }
 
-    o.start = function(){
+    o.start = function(stop){
+      o.until(stop)
       o.source.emit('start')
       return o
     }
