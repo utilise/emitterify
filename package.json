@@ -6,7 +6,7 @@
     "build": "rollup -c && npm run minify && npm run gzip",
     "minify": "uglifyjs client.bundle.js -m -c keep_fargs=false -o client.min.js",
     "gzip": "gzip -c client.min.js > client.min.js.gz",
-    "test": "node --trace-warnings --harmony-async-iteration ./node_modules/istanbul/lib/cli.js test ./node_modules/mocha/bin/_mocha --report html -- -R spec",
+    "test": "node --trace-warnings ./node_modules/istanbul/lib/cli.js test ./node_modules/mocha/bin/_mocha --report html -- -R spec",
     "coverage": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && rm -rf ./coverage",
     "cov": "istanbul cover ./node_modules/mocha/bin/_mocha -- -R spec"
   },
