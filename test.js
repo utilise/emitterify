@@ -1046,4 +1046,26 @@ describe('emitterify', function() {
     expect(o.on.foo.length).to.be.eql(0)
   })
 
+  it('should work with transducers', async () => {
+    const map = fn => next => (acc,v) => next(acc,fn(v)) 
+        , filter = fn => next => (acc,v) => fn(v) && next(acc,v)
+        , until = (hi, lo = 0) => (next,o) => (acc,v) => ++lo > hi ? o.stop() : next(acc,v)
+        , o = emitterify()
+        , results = []
+        , input = [0,1,2,3,4,5,6,7,8,9]
+
+    o.on('foo')
+      .transform(
+        map(v => v * 3)
+      , filter(v => v % 2)
+      , until(3)
+      )
+      .each(v => results.push(v))
+
+
+    expect(o.on.foo.length).to.be.eql(1) 
+    await Promise.all(input.map(async d => await Promise.all(o.emit('foo', await d))))
+    expect(o.on.foo.length).to.be.eql(0) 
+    expect(results).to.be.eql([3,9,15])
+  })
 })

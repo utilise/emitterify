@@ -115,6 +115,15 @@ module.exports = function emitterify(body, hooks) {
       return o.each(function(d, i, n){ return n.next(acc = fn(acc, d, i, n)) })
     }
 
+    o.transform = function(){
+      const fns = Array.from(arguments).reverse()
+          , n = o.each(function(d, i, n){ pipeline(n, d) })
+          , pipeline = fns.reduce(function(res, fn){
+              return fn(res, o)
+            }, function(_,d){ n.next(d) })
+      return n
+    } 
+
     o.unpromise = function(){ 
       var n = observable(o, { base: {}, fn: function(d){ return n.next(d) } })
       o.li.push(n)
