@@ -123,6 +123,7 @@ module.exports = function emitterify(body, hooks) {
 
     o.next = function(value) {
       o.resolve && o.resolve(value)
+      o.emit('next', value)
       return o.li.length 
            ? o.li.map(function(n){ return n.fn(value, n.i++, n) })
            : value
@@ -151,18 +152,28 @@ module.exports = function emitterify(body, hooks) {
     }
 
     o[Symbol.asyncIterator] = function(){ 
+      const queue = []
+          , buffer = o.map(value => 
+              new Promise(resolve => queue.push({ value, done: false, resolve }))
+            ).start(o.source
+              .once('stop')
+              .map(value => new Promise(resolve => {
+                o.off(buffer)
+                queue.push({ value, done: true, resolve })
+                buffer.emit('next')
+              })))
+
       return { 
         next: function(){ 
-          return o.wait = new Promise(function(resolve){
-            o.wait = true
-            o.map(function(d, i, n){
-              delete o.wait
-              o.off(n)
-              resolve({ value: d, done: false })
-            })
-            o.emit('pull', o)
+          return Promise.resolve(
+              queue.length ? queue.shift() : buffer.once('next').map(() => queue.shift())
+          ).then(({ value, done, resolve }) => {
+            resolve(value)
+            return { value, done }
           })
         }
+      , return: o.stop
+      , queue
       }
     }
 

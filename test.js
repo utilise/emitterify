@@ -833,7 +833,7 @@ describe('emitterify', function() {
     })
   })
 
-  it('asyncIterator: should drop values without buffering', async function(done) {
+  it('asyncIterator: should (not?) drop values without buffering', async function(done) {
     const o = emitterify({})
         , results = []
         , thread = async () => {
@@ -847,110 +847,137 @@ describe('emitterify', function() {
     o.emit('foo', 20)
     o.emit('foo', 30)
     time(10, d => { 
-      expect(results).to.be.eql([10])
+      // expect(results).to.be.eql([10])
+      expect(results).to.be.eql([10,20,30])
       done() 
     })
   })
 
-  it('asyncIterator: should buffer synchronous pushes (buffer operator)', async function(done) {
-    const o = emitterify({})
-        , results = []
-        , buffer = (d, i, n) => {
-            n.buffer = n.buffer || []
-            n.pull = n.pull || n.on('pull')
-              .filter(d => n.buffer.length)
-              .map(d => n.next(n.buffer.shift()))
+//   it('asyncIterator: should buffer synchronous pushes (buffer operator)', async function(done) {
+//     const o = emitterify({})
+//         , results = []
+//         , buffer = (d, i, n) => {
+//             n.buffer = n.buffer || []
+//             n.pull = n.pull || n.on('pull')
+//               .filter(d => n.buffer.length)
+//               .map(d => n.next(n.buffer.shift()))
 
-            if (n.wait)
-              n.next(d)
-            else
-              n.buffer.push(d)
-          }
-        , thread = async () => {
-            for await (const d of o.on('foo').filter(buffer)) 
-              results.push(d)
-          }
+//             if (n.waiting)
+//               n.next(d)
+//             else
+//               n.buffer.push(d)
+//           }
+//         , thread = async () => {
+//             for await (const d of o.on('foo').filter(buffer)) 
+//               results.push(d)
+//           }
 
-    thread()
-    o.emit('foo', 10)
-    o.emit('foo', 20)
-    o.emit('foo', 30)
-    time(d => { 
-      expect(results).to.be.eql([10, 20, 30])
-      done()
-    })
-  })
+//     thread()
+//     o.emit('foo', 10)
+//     o.emit('foo', 20)
+//     o.emit('foo', 30)
+//     time(d => { 
+//       expect(results).to.be.eql([10, 20, 30])
+//       done()
+//     })
+//   })
 
-  it('asyncIterator: should buffer synchronous pushes (declarative)', async function(done) {
-    const o = emitterify()
-        , results = []
-        , buffer = input => {
-            const output = emitterify().on('bar') //input.filter(d => false)
-                , buffer = []
+//   it('asyncIterator: should buffer synchronous pushes (declarative)', async function(done) {
+//     const o = emitterify()
+//         , results = []
+//         , buffer = input => {
+//             const output = emitterify().on('bar') //input.filter(d => false)
+//                 , buffer = []
 
-            output
-              .on('pull')
-              .filter(o => buffer.length)
-              .map(o => o.next(buffer.shift()))
+//             output
+//               .on('pull')
+//               .filter(o => buffer.length)
+//               .map(o => o.next(buffer.shift()))
 
-            input
-              .filter(d => buffer.push(d))
-              .filter(d => output.wait)
-              .filter(d => output.next(buffer.shift()))
+//             input
+//               .filter(d => buffer.push(d))
+//               .filter(d => output.waiting)
+//               .filter(d => output.next(buffer.shift()))
               
-            return output
-          }
-        , thread = async () => {
-            for await (const d of o.on('foo').pipe(buffer))
-              results.push(d)
-          }
+//             return output
+//           }
+//         , thread = async () => {
+//             for await (const d of o.on('foo').pipe(buffer))
+//               results.push(d)
+//           }
 
-// o.on('foo').pipe(buffer)
-//   , buffer = input => {
-//       const output = emitterify().on('bar')
-//           , buffer = []
+// // o.on('foo').pipe(buffer)
+// //   , buffer = input => {
+// //       const output = emitterify().on('bar')
+// //           , buffer = []
 
-//       output
-//         .on('pull')
-//         .filter(o => buffer.length)
-//         .map(o => o.next(buffer.shift()))
+// //       output
+// //         .on('pull')
+// //         .filter(o => buffer.length)
+// //         .map(o => o.next(buffer.shift()))
 
-//       input
-//         .filter(d => buffer.push(d))
-//         .filter(d => output.wait)
-//         .filter(d => output.next(buffer.shift()))
+// //       input
+// //         .filter(d => buffer.push(d))
+// //         .filter(d => output.wait)
+// //         .filter(d => output.next(buffer.shift()))
         
-//       return output
-//     }
+// //       return output
+// //     }
 
 
-    thread()
-    o.emit('foo', 10)
-    o.emit('foo', 20)
-    o.emit('foo', 30)
-    time(d => { 
-      expect(results).to.be.eql([10, 20, 30])
-      done()
-    })
-  })
+//     thread()
+//     o.emit('foo', 10)
+//     o.emit('foo', 20)
+//     o.emit('foo', 30)
+//     time(d => { 
+//       expect(results).to.be.eql([10, 20, 30])
+//       done()
+//     })
+//   })
+
+  // it('asyncIterator: should csp', async function(done) {
+  //   const o = emitterify({})
+  //       , threads = {
+  //           consumer: async chan => {
+  //             for await (const d of chan)
+  //               if (results.push(d) == 10) break
+  //           }
+  //         , producer: async (chan, i = 0) => {
+  //             for await (const d of chan.on('pull'))
+  //               chan.next(++i)
+  //           }
+  //         }
+  //       , results = []
+
+  //   const chan = o.on('foo')
+  //   threads.producer(chan)
+  //   threads.consumer(chan)
+
+  //   time(d => { 
+  //     expect(results).to.be.eql([1,2,3,4,5,6,7,8,9,10])
+  //     done()
+  //   })
+  // })
 
   it('asyncIterator: should csp', async function(done) {
     const o = emitterify({})
         , threads = {
             consumer: async chan => {
-              for await (const d of chan)
-                if (results.push(d) == 10) break
+              for await (const value of chan) {
+                if (results.push(value) == 10) return
+              }
             }
           , producer: async (chan, i = 0) => {
-              for await (const d of chan.on('pull'))
-                chan.next(++i)
+              while (!chan.done) {
+                await Promise.all(chan.next(++i))
+              }
             }
           }
         , results = []
 
     const chan = o.on('foo')
-    threads.producer(chan)
     threads.consumer(chan)
+    threads.producer(chan)
 
     time(d => { 
       expect(results).to.be.eql([1,2,3,4,5,6,7,8,9,10])
