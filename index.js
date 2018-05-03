@@ -88,6 +88,11 @@ module.exports = function emitterify(body, hooks) {
       return o.done = reason || true
     })
 
+    // TODO: should be getter
+    o[Symbol.species] = function(){
+      return observable()
+    }
+
     o.each = function(fn) {
       var n = fn.next ? fn : observable(o, { fn: fn })
       o.li.push(n)
