@@ -81,11 +81,11 @@ module.exports = function emitterify(body, hooks) {
     o.parent = parent
     o.source = opts.fn ? o.parent.source : o
     
-    o.on('stop', function(reason){
+    o.once('stop', function(reason){
       o.type
         ? o.parent.off(o.type, o)
         : o.parent.off(o)
-      return o.reason = reason
+      return o.done = reason || true
     })
 
     o.each = function(fn) {
